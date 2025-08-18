@@ -14,7 +14,7 @@ def handle_session(chan, username, password, addr, start_time, cowrie_connector)
 
   prompt_manager = set_prompt.PromptManager()
   prompt = prompt_manager.get_prompt(username, hostname, cwd)
-  reader = line_reader.LineReader(chan, username, password, prompt, history)
+  reader = line_reader.LineReader(chan, username, password, prompt, history, cowrie_connector=cowrie_connector, cwd=cwd)
 
   try:
     cowrie_connector.flush_buffer(timeout=1.0)
@@ -49,6 +49,9 @@ def handle_session(chan, username, password, addr, start_time, cowrie_connector)
         dir_cmd = f"cd {cwd}"
       else:
         dir_cmd = ""
+
+      reader.update_cwd(cwd)
+
       prompt = prompt_manager.get_prompt(username, hostname, cwd)
       reader.update_prompt(prompt)
       clean_output = ansi_sequences.strip_ansi_sequences(output)

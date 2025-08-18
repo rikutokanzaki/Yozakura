@@ -2,7 +2,7 @@ from connector import connect_server
 from utils import ansi_sequences, extract_chars
 
 class LineReader:
-  def __init__(self, chan, username, password, prompt="", history=[]):
+  def __init__(self, chan, username, password, prompt="", history=[], cowrie_connector=None, cwd="~"):
     self.chan = chan
     self.username = username
     self.password = password
@@ -13,9 +13,15 @@ class LineReader:
     self.prev_rendered_len = 0
     self.history = history
     self.history_index = -1
+    self.cwd = cwd
+    self.cowrie_connector = cowrie_connector
 
   def update_prompt(self, new_prompt):
     self.prompt = new_prompt
+
+  def update_cwd(self, new_cwd: str):
+    if new_cwd:
+      self.cwd = new_cwd
 
   def send_prompt(self):
     self.chan.send(self.prompt.encode("utf-8"))
@@ -57,14 +63,10 @@ class LineReader:
 
     command_with_tab = full_input + "\t"
 
-    cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
-    cwd = cowrie_connector.replay_cwd_only(
-      username=self.username,
-      password=self.password,
-      history=self.history
-    )
+    connector = self.cowrie_connector or connect_server.SSHConnector(host="cowrie", port=2222)
+    cwd = self.cwd or "~"
 
-    command, output_chars = cowrie_connector.execute_with_tab(
+    command, output_chars = connector.execute_with_tab(
       cwd,
       command_with_tab,
       self.username,

@@ -37,21 +37,15 @@ class SSHConnector:
       raise RuntimeError("Cowrie shell is not opened")
 
     try:
-      # 必要なら cd を先行
       if dir_cmd:
         self.shell.send(dir_cmd + "\n")
         self._receive_until_prompt(self.shell, dir_cmd)
 
-      # コマンド送信
       self.shell.send(command + "\n")
       output, cwd = self._receive_until_prompt(self.shell, command)
       return output, cwd
     except Exception as e:
       return f"Error: {e}\r\n", "~"
-
-  # 互換のため（未使用なら削除可）
-  def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
-    return self.send_command(command, dir_cmd or "")
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
     try:
