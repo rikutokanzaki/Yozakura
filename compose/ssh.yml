@@ -12,7 +12,7 @@ services:
     env_file:
       - ../.env
     volumes:
-      - ${SAKURA_DATA_PATH}/paramiko:/var/log/paramiko
+      - ${YOZAKURA_DATA_PATH}/paramiko:/var/log/paramiko
     restart: always
 
   ####################################
@@ -29,7 +29,7 @@ services:
     image: cowrie/cowrie
     volumes:
       - ../layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
-      - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
+      - ${YOZAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
     environment:
       - PYTHONUNBUFFERED=1
       - COWRIE_TTYLOG_ENABLED=yes
@@ -106,7 +106,7 @@ services:
       co.elastic.logs/module: elasticsearch
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
-      - ${SAKURA_DATA_PATH}:/data
+      - ${YOZAKURA_DATA_PATH}:/data
     ports:
       - 64298:9200
     environment:
@@ -220,7 +220,7 @@ services:
       - certs:/usr/share/logstash/certs
       - ../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
       - ../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-      - ${SAKURA_DATA_PATH}:/data
+      - ${YOZAKURA_DATA_PATH}:/data
     ports:
       - "64305:9600"
     environment:

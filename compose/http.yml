@@ -12,7 +12,7 @@ services:
     env_file:
       - ../.env
     volumes:
-      - ${SAKURA_DATA_PATH}/openresty:/var/log/nginx
+      - ${YOZAKURA_DATA_PATH}/openresty:/var/log/nginx
     restart: always
 
   ####################################
@@ -28,8 +28,8 @@ services:
     container_name: h0neytr4p
     image: ghcr.io/telekom-security/h0neytr4p:24.04.1
     volumes:
-      - ${SAKURA_DATA_PATH}/h0neytr4p/log/:/opt/h0neytr4p/log/
-      - ${SAKURA_DATA_PATH}/h0neytr4p/payloads/:/data/h0neytr4p/payloads/
+      - ${YOZAKURA_DATA_PATH}/h0neytr4p/log/:/opt/h0neytr4p/log/
+      - ${YOZAKURA_DATA_PATH}/h0neytr4p/payloads/:/data/h0neytr4p/payloads/
     restart: always
 
   ####################################
@@ -103,7 +103,7 @@ services:
       co.elastic.logs/module: elasticsearch
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
-      - ${SAKURA_DATA_PATH}:/data
+      - ${YOZAKURA_DATA_PATH}:/data
     ports:
       - 64298:9200
     environment:
@@ -217,7 +217,7 @@ services:
       - certs:/usr/share/logstash/certs
       - ../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
       - ../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-      - ${SAKURA_DATA_PATH}:/data
+      - ${YOZAKURA_DATA_PATH}:/data
     ports:
       - "64305:9600"
     environment:
