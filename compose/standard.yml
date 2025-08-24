@@ -6,9 +6,12 @@ services:
     container_name: openresty
     build: ../dispatcher/openresty
     depends_on:
+      - heralding
       - h0neytr4p
+      - wordpot
     ports:
       - "80:80"
+      - "5000:5000"
     env_file:
       - ../.env
     volumes:
@@ -19,6 +22,7 @@ services:
     container_name: paramiko
     build: ../dispatcher/paramiko
     depends_on:
+      - heralding
       - cowrie
     ports:
       - "22:22"
@@ -36,7 +40,30 @@ services:
   ## Active
   ##############
 
+  ### HTTP, SSH ###
+  heralding:
+    container_name: heralding
+    image: ghcr.io/telekom-security/heralding:24.04.1
+    volumes:
+      - ${YOZAKURA_DATA_PATH}/heralding:/var/log/heralding
+    tmpfs:
+      - /tmp/heralding:uid=2000,gid=2000
+    restart: always
+    read_only: true
+
+  ##############
+  ## Passive
+  ##############
+
   ### HTTP ###
+  wordpot:
+    container_name: wordpot
+    image: ghcr.io/telekom-security/wordpot:24.04.1
+    volumes:
+      - ${YOZAKURA_DATA_PATH}/wordpot/log/:/opt/wordpot/logs/
+    user: "0"
+    restart: always
+
   h0neytr4p:
     container_name: h0neytr4p
     image: ghcr.io/telekom-security/h0neytr4p:24.04.1
