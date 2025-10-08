@@ -10,14 +10,37 @@ class SSHConnector:
     self.client = None
     self.shell = None
 
-  def record_login(self, username: str, password: str):
-    self.client = paramiko.SSHClient()
-    self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    self.client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+  def close(self):
+    if self.shell:
+      try:
+        self.shell.close()
 
-    self.shell = self.client.invoke_shell()
-    self.shell.settimeout(0.2)
-    self.flush_buffer(timeout=1.0)
+      except:
+        pass
+
+      self.shell = None
+
+    if self.client:
+      try:
+        self.client.close()
+
+      except:
+        pass
+
+      self.client = None
+
+  def record_login(self, username: str, password: str):
+    try:
+      self.client = paramiko.SSHClient()
+      self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      self.client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+
+      self.shell = self.client.invoke_shell()
+      self.shell.settimeout(0.2)
+      self.flush_buffer(timeout=1.0)
+
+    except Exception as e:
+      self.close()
 
   def flush_buffer(self, timeout: float = 0.5):
     if not self.shell:
@@ -44,7 +67,9 @@ class SSHConnector:
       self.shell.send(command + "\n")
       output, cwd = self._receive_until_prompt(self.shell, command)
       return output, cwd
+
     except Exception as e:
+      self.close()
       return f"Error: {e}\r\n", "~"
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
@@ -91,13 +116,25 @@ class SSHConnector:
 
       output_chars = output.decode("utf-8", errors="ignore")
 
-      shell.close()
-      client.close()
-
       return command, output_chars
 
     except Exception as e:
       return "", ""
+
+    finally:
+      if shell:
+        try:
+          shell.close()
+
+        except:
+          pass
+
+      if client:
+        try:
+          client.close()
+
+        except:
+          pass
 
   def _wait_for_prompt(self, shell):
     try:
