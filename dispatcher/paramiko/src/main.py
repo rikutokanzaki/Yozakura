@@ -53,13 +53,14 @@ def start_proxy():
   sock.listen(100)
   print(f"SSH Proxy listening on {HOST}:{PORT}")
 
+  host_key = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
+
   while True:
     try:
       client, addr = sock.accept()
       print(f"Connection from {addr}")
 
       transport = paramiko.Transport(client)
-      host_key = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
       transport.add_server_key(host_key)
       server = SSHProxyServer(addr)
 
