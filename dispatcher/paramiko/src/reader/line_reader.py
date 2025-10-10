@@ -13,6 +13,7 @@ class LineReader:
     self.prev_rendered_len = 0
     self.history = history
     self.history_index = -1
+    self.max_history_length = 1000
     self.cwd = cwd
     self.cowrie_connector = cowrie_connector
 
@@ -164,6 +165,8 @@ class LineReader:
           line = b"".join(self.buffer).decode("utf-8", errors="ignore")
           if line:
             self.history.append(line)
+            if len(self.hisotry) > self.max_history_length:
+              self.history.pop(0)
           return line
 
         # BACKSPACE
