@@ -9,32 +9,77 @@ class SSHConnector:
     self.port = port
     self.client = None
     self.shell = None
+    self._username = None
+    self._password = None
+
+  def close(self):
+    try:
+      if self.shell:
+        try: self.shell.close()
+        except: pass
+      if self.client:
+        try: self.client.close()
+        except: pass
+    finally:
+      self.shell = None
+      self.client = None
 
   def record_login(self, username: str, password: str):
-    self.client = paramiko.SSHClient()
-    self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    self.client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+    client = None
 
-    self.shell = self.client.invoke_shell()
-    self.shell.settimeout(0.2)
-    self.flush_buffer(timeout=1.0)
+    try:
+      client = paramiko.SSHClient()
+      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+      self._username = username
+      self._password = password
 
-  def flush_buffer(self, timeout: float = 0.5):
+    finally:
+      if client:
+        try: client.close()
+        except: pass
+
+  def flush_buffer(self, timeout: float = 0.2):
     if not self.shell:
       return
     end = time.time() + timeout
+
     try:
       while time.time() < end:
         if self.shell.recv_ready():
           _ = self.shell.recv(4096)
+
         else:
           time.sleep(0.02)
+
     except Exception:
       pass
 
+  def open_session(self, username: str, password: str):
+    self.close()
+    self.client = paramiko.SSHClient()
+    self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    self.client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+
+    try:
+      self.client.get_transport().set_keepalive(30)
+
+    except Exception:
+      pass
+
+    self._username = username
+    self._password = password
+    self.shell = self.client.invoke_shell()
+    self.shell.settimeout(0.2)
+    self.flush_buffer(timeout=0.2)
+
   def send_command(self, command: str, dir_cmd: str = "") -> tuple[str, str]:
     if not self.shell:
-      raise RuntimeError("Cowrie shell is not opened")
+      if self._username and self._password:
+        self.open_session(self._username, self._password)
+
+      else:
+        raise RuntimeError("Cowrie shell is not opened")
 
     try:
       if dir_cmd:
@@ -43,6 +88,7 @@ class SSHConnector:
 
       self.shell.send(command + "\n")
       output, cwd = self._receive_until_prompt(self.shell, command)
+
       return output, cwd
     except Exception as e:
       return f"Error: {e}\r\n", "~"
