@@ -6,7 +6,6 @@ services:
     container_name: paramiko
     build: ../dispatcher/paramiko
     depends_on:
-      - launcher
       - heralding
       - cowrie
     ports:
@@ -15,19 +14,6 @@ services:
       - ../.env
     volumes:
       - ${YOZAKURA_DATA_PATH}/paramiko:/var/log/paramiko
-    restart: always
-
-  ####################################
-  ### Launcher
-  ####################################
-  launcher:
-    container_name: launcher
-    build: ../launcher
-    env_file:
-      - ../.env
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${YOZAKURA_DATA_PATH}:/data
     restart: always
 
   ####################################
