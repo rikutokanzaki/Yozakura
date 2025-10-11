@@ -91,29 +91,43 @@ class SSHConnector:
 
       output_chars = output.decode("utf-8", errors="ignore")
 
-      shell.close()
-      client.close()
-
       return command, output_chars
 
     except Exception as e:
       return "", ""
 
+    finally:
+      if shell:
+        try:
+          shell.close()
+
+        except:
+          pass
+
+      if client:
+        try:
+          client.close()
+
+        except:
+          pass
+
   def _wait_for_prompt(self, shell):
     try:
       while True:
         data = shell.recv(1024)
+
         if not data:
           break
+
         if b"$ " in data or b"# " in data:
           break
+
     except Exception:
       pass
 
   def _receive_until_prompt(self, shell, sent_cmd: str = "") -> tuple[str, str]:
     output = b""
     prompt_line = b""
-    prompt_str = ""
 
     try:
       while True:
