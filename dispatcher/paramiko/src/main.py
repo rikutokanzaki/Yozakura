@@ -9,6 +9,8 @@ import time
 HOST = "0.0.0.0"
 PORT = 22
 
+HOST_KEY = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
+
 class SSHProxyServer(paramiko.ServerInterface):
   def __init__(self, client_addr):
     self.event = threading.Event()
@@ -59,8 +61,7 @@ def start_proxy():
       print(f"Connection from {addr}")
 
       transport = paramiko.Transport(client)
-      host_key = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
-      transport.add_server_key(host_key)
+      transport.add_server_key(HOST_KEY)
       server = SSHProxyServer(addr)
 
       try:
@@ -96,8 +97,29 @@ def start_proxy():
 
       except EOFError:
         print("Client closed connection after authentication (EOF)")
+
+        try:
+          transport.close()
+        except:
+          pass
+
+        try:
+          client.close()
+        except:
+          pass
+
       except Exception as e:
         print(f"Error during session handling: {e}")
+
+        try:
+          transport.close()
+        except:
+          pass
+
+        try:
+          client.close()
+        except:
+          pass
 
     except Exception as e:
       print(f"Error acceptiong connection: {e}")
