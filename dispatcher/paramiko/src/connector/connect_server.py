@@ -36,8 +36,11 @@ class SSHConnector:
 
     finally:
       if client:
-        try: client.close()
-        except: pass
+        try:
+          client.close()
+
+        except:
+          pass
 
   def flush_buffer(self, timeout: float = 0.2):
     if not self.shell:
