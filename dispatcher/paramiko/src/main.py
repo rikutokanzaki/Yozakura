@@ -124,5 +124,16 @@ def start_proxy():
     except Exception as e:
       print(f"Error acceptiong connection: {e}")
 
+      try:
+        if transport:
+          transport.close()
+      except:
+        pass
+
+      try:
+        client.close()
+      except:
+        pass
+
 if __name__ == "__main__":
   start_proxy()
