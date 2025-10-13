@@ -68,12 +68,44 @@ def start_proxy():
         transport.start_server(server=server)
       except paramiko.SSHException:
         print("SSH negotiation failed")
+        try:
+          transport.close()
+        except:
+          pass
+
+        try:
+          client.close()
+        except:
+          pass
+
         continue
+
       except EOFError:
         print("Client closed connection during handshake (EOF)")
+        try:
+          transport.close()
+        except:
+          pass
+
+        try:
+          client.close()
+        except:
+          pass
+
         continue
+
       except Exception as e:
         print(f"Unexpected error during SSH handshake: {e}")
+        try:
+          transport.close()
+        except:
+          pass
+
+        try:
+          client.close()
+        except:
+          pass
+
         continue
 
       try:
