@@ -1,3 +1,4 @@
+from auth import auth_user
 from connector import connect_server
 from session import handler
 from utils import log_event
@@ -16,6 +17,8 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.event = threading.Event()
     self.username = None
     self.password = None
+    self.authenticator = auth_user.Authenticator()
+    self.heralding_connector = connect_server.SSHConnector(host="heralding")
     self.cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
     self.client_addr = client_addr
 
@@ -24,15 +27,13 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.password = password
 
     try:
-      self.cowrie_connector.record_login(username=username, password=password)
-      auth_success = True
-    except paramiko.AuthenticationException:
-      auth_success = False
+      self.heralding_connector.record_login(username=username, password=password)
     except Exception as e:
-      print(f"Cowrie auth check error: {e}")
-      auth_success = False
+      pass
 
+    auth_success = self.authenticator.authenticate(username, password)
     log_event.log_auth_event(self.client_addr, HOST, PORT, username, password, auth_success)
+
     return paramiko.AUTH_SUCCESSFUL if auth_success else paramiko.AUTH_FAILED
 
   def check_channel_request(self, kind, chanid):

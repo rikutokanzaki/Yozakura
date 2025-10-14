@@ -76,25 +76,46 @@ class SSHConnector:
     self.shell.settimeout(0.2)
     self.flush_buffer(timeout=0.2)
 
-  def send_command(self, command: str, dir_cmd: str = "") -> tuple[str, str]:
-    if not self.shell:
-      if self._username and self._password:
-        self.open_session(self._username, self._password)
-
-      else:
-        raise RuntimeError("Cowrie shell is not opened")
+  def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
+    client = None
+    shell = None
 
     try:
-      if dir_cmd:
-        self.shell.send(dir_cmd + "\n")
-        self._receive_until_prompt(self.shell, dir_cmd)
+      client = paramiko.SSHClient()
+      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
 
-      self.shell.send(command + "\n")
-      output, cwd = self._receive_until_prompt(self.shell, command)
+      shell = client.invoke_shell()
+      shell.settimeout(5)
+
+      self._wait_for_prompt(shell)
+
+      if dir_cmd:
+        shell.send(dir_cmd + "\n")
+        self._wait_for_prompt(shell)
+
+      shell.send(command + "\n")
+      output, cwd = self._receive_until_prompt(shell, command)
 
       return output, cwd
+
     except Exception as e:
       return f"Error: {e}\r\n", "~"
+
+    finally:
+      if shell:
+        try:
+          shell.close()
+
+        except:
+          pass
+
+      if client:
+        try:
+          client.close()
+
+        except:
+          pass
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
     try:

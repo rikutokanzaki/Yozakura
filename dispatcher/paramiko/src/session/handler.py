@@ -44,7 +44,7 @@ def handle_session(chan, username, password, addr, start_time, cowrie_connector)
       if cmd.lower() in ["exit", "quit", "exit;", "quit;"]:
         break
 
-      output, cwd = cowrie_connector.send_command(cmd, dir_cmd or "")
+      output, cwd = cowrie_connector.execute_command(cmd, username, password, dir_cmd or "")
       if cwd != "~":
         dir_cmd = f"cd {cwd}"
       else:
