@@ -31,8 +31,9 @@ class SSHConnector:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-      self._username = username
-      self._password = password
+
+    except Exception as e:
+      print(f"Login recording error: {e}")
 
     finally:
       if client:
@@ -57,24 +58,6 @@ class SSHConnector:
 
     except Exception:
       pass
-
-  def open_session(self, username: str, password: str):
-    self.close()
-    self.client = paramiko.SSHClient()
-    self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    self.client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-
-    try:
-      self.client.get_transport().set_keepalive(30)
-
-    except Exception:
-      pass
-
-    self._username = username
-    self._password = password
-    self.shell = self.client.invoke_shell()
-    self.shell.settimeout(0.2)
-    self.flush_buffer(timeout=0.2)
 
   def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
     client = None
@@ -118,6 +101,9 @@ class SSHConnector:
           pass
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
+    client = None
+    shell = None
+
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
