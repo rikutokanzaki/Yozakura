@@ -31,8 +31,12 @@ echo
 echo "Handling data backup..."
 echo
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_NAME="$(basename "$SCRIPT_DIR")"
+
 INSTALL_DATE_FILE=".install_date"
 TODAY=$(date +"%Y%m%d")
+TIMENOW=$(date +"%H%M%S")
 
 if [ -f "$INSTALL_DATE_FILE" ]; then
   INSTALL_DATE=$(cat "$INSTALL_DATE_FILE")
@@ -40,16 +44,16 @@ else
   INSTALL_DATE="unknown"
 fi
 
-PERIOD_DIR="${INSTALL_DATE}-${TODAY}"
+PERIOD_DIR="${INSTALL_DATE}-${TODAY}-${TIMENOW}"
 
-ARCHIVE_BASE="../archive"
+ARCHIVE_BASE="../archive/${PROJECT_NAME}"
 TARGET_DIR="${ARCHIVE_BASE}/${PERIOD_DIR}"
 
 if [ -d "./data" ]; then
   mkdir -p "$TARGET_DIR"
-  echo "Moving ./data → ${TARGET_DIR}/data"
-  mv ./data "${TARGET_DIR}/data"
-  echo "Data moved successfully."
+  echo "Copying ./data → ${TARGET_DIR}/data"
+  cp -a ./data "${TARGET_DIR}/data"
+  echo "Data copied successfully."
 else
   echo "No ./data directory found. Skipping."
 fi
