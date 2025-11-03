@@ -1,4 +1,4 @@
-# !/bin/bash
+#!/bin/bash
 
 YOZAKURAINSTALLER=$(
   cat <<"EOF"

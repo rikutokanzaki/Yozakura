@@ -1,4 +1,4 @@
-# !/bin/bash
+#!/bin/bash
 
 # Uninstallation process begins
 if sudo -v; then
