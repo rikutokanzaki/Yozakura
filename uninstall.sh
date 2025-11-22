@@ -50,10 +50,17 @@ ARCHIVE_BASE="${ARCHIVE_DATA_PATH}/${PROJECT_NAME}"
 TARGET_DIR="${ARCHIVE_BASE}/${PERIOD_DIR}"
 
 if [ -d "./data" ]; then
-  mkdir -p "$TARGET_DIR"
-  echo "Copying ./data → ${TARGET_DIR}/data"
-  cp -a ./data "${TARGET_DIR}/data"
-  echo "Data copied successfully."
+  echo "Creating archive dir: $TARGET_DIR"
+  if ! mkdir -p "$TARGET_DIR"; then
+    echo "Error: cannot create '$TARGET_DIR' (check ARCHIVE_DATA_PATH and permissions)." >&2
+  else
+    echo "Copying ./data → ${TARGET_DIR}/data"
+    if cp -a ./data "${TARGET_DIR}/data"; then
+      echo "Captured malicious activity data copied successfully."
+    else
+      echo "Error: failed to copy data to '${TARGET_DIR}/data'." >&2
+    fi
+  fi
 else
   echo "No ./data directory found. Skipping."
 fi
