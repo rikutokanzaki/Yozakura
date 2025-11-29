@@ -57,6 +57,7 @@ if [ -d "./data" ]; then
     echo "Copying ./data → ${TARGET_DIR}/data"
     if cp -a ./data "${TARGET_DIR}/data"; then
       echo "Captured malicious activity data copied successfully."
+      echo
       echo "Removing original ./data directory..."
       if sudo rm -rf ./data; then
         echo "Original ./data directory removed."
