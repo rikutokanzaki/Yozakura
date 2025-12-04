@@ -1,47 +1,40 @@
-from utils import ansi_sequences
+from utils import ansi_sequences, resource_manager
+import logging
 import paramiko
 import re
 import time
+
+logger = logging.getLogger(__name__)
 
 class SSHConnector:
   def __init__(self, host: str, port: int = 22):
     self.host = host
     self.port = port
-    self.client = None
     self.shell = None
-    self._username = None
-    self._password = None
-
-  def close(self):
-    try:
-      if self.shell:
-        try: self.shell.close()
-        except: pass
-      if self.client:
-        try: self.client.close()
-        except: pass
-    finally:
-      self.shell = None
-      self.client = None
 
   def record_login(self, username: str, password: str):
     client = None
+    shell = None
+    transport = None
 
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+      transport = client.get_transport()
 
-    except Exception as e:
-      print(f"Login recording error: {e}")
+      try:
+        shell = client.invoke_shell()
+        shell.settimeout(5)
+      except Exception:
+        logger.debug("Shell not available during heralding login record")
+
+    except Exception:
+      logger.exception("Login recording error")
+      raise
 
     finally:
-      if client:
-        try:
-          client.close()
-
-        except:
-          pass
+      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
 
   def flush_buffer(self, timeout: float = 0.2):
     if not self.shell:
@@ -62,11 +55,13 @@ class SSHConnector:
   def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
     client = None
     shell = None
+    transport = None
 
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+      transport = client.get_transport()
 
       shell = client.invoke_shell()
       shell.settimeout(5)
@@ -82,32 +77,24 @@ class SSHConnector:
 
       return output, cwd
 
-    except Exception as e:
-      return f"Error: {e}\r\n", "~"
+    except Exception:
+      logger.exception("Error in execute_command")
+      raise
 
     finally:
-      if shell:
-        try:
-          shell.close()
+      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
 
-        except:
-          pass
-
-      if client:
-        try:
-          client.close()
-
-        except:
-          pass
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
     client = None
     shell = None
+    transport = None
 
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+      transport = client.get_transport()
 
       shell = client.invoke_shell()
       shell.settimeout(5)
@@ -143,29 +130,19 @@ class SSHConnector:
           time.sleep(0.05)
 
         except Exception:
+          logger.exception("Error while receiving TAB completion output")
           break
 
       output_chars = output.decode("utf-8", errors="ignore")
 
       return command, output_chars
 
-    except Exception as e:
+    except Exception:
+      logger.exception("Error in execute_with_tab")
       return "", ""
 
     finally:
-      if shell:
-        try:
-          shell.close()
-
-        except:
-          pass
-
-      if client:
-        try:
-          client.close()
-
-        except:
-          pass
+      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
 
   def _wait_for_prompt(self, shell):
     try:
@@ -179,7 +156,8 @@ class SSHConnector:
           break
 
     except Exception:
-      pass
+      logger.exception("Error in _wait_for_prompt")
+      raise
 
   def _receive_until_prompt(self, shell, sent_cmd: str = "") -> tuple[str, str]:
     output = b""
@@ -195,7 +173,8 @@ class SSHConnector:
           prompt_line = data
           break
     except Exception:
-      pass
+      logger.exception("Error in _receive_until_prompt")
+      raise
 
     lines = output.split(b"\n")
     cleaned_lines = []
