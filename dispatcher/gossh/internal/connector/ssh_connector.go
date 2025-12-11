@@ -71,17 +71,18 @@ func (c *SSHConnector) RecordLogin(username, password string) error {
 	sshConn, chans, reqs, err := ssh.NewClientConn(conn, fmt.Sprintf("%s:%d", c.host, c.port), config)
 	if err != nil {
 		if strings.Contains(err.Error(), "unable to authenticate") {
-			log.Printf("Heralding auth failed (expected)")
+			log.Printf("Auth failed")
 			return nil
 		}
 		return fmt.Errorf("auth error: %w", err)
 	}
-	defer resource.CloseConnection(sshConn)
 
 	done := make(chan struct{})
-	defer close(done)
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	go func() {
+		defer wg.Done()
 		for {
 			select {
 			case req, ok := <-reqs:
@@ -98,6 +99,7 @@ func (c *SSHConnector) RecordLogin(username, password string) error {
 	}()
 
 	go func() {
+		defer wg.Done()
 		for {
 			select {
 			case ch, ok := <-chans:
@@ -113,7 +115,12 @@ func (c *SSHConnector) RecordLogin(username, password string) error {
 		}
 	}()
 
-	log.Printf("Heralding auth succeeded (unexpected)")
+	log.Printf("Auth succeeded")
+
+	close(done)
+	wg.Wait()
+	resource.CloseConnection(sshConn)
+
 	return nil
 }
 

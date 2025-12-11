@@ -65,7 +65,7 @@ func handleClient(tcpConn net.Conn, hostKey ssh.Signer) {
 	log.Printf("Connection from %s", addr)
 
 	authenticator := auth.NewAuthenticator("./config/user.txt")
-	heraldingConnector := connector.NewSSHConnector("heralding", 22)
+	// heraldingConnector := connector.NewSSHConnector("heralding", 22)
 	cowrieConnector := connector.NewSSHConnector("cowrie", 2222)
 
 	var username, password string
@@ -82,7 +82,7 @@ func handleClient(tcpConn net.Conn, hostKey ssh.Signer) {
 						log.Printf("Recovered from panic in record_login: %v", r)
 					}
 				}()
-				_ = heraldingConnector.RecordLogin(username, password)
+				_ = cowrieConnector.RecordLogin(username, password)
 			}()
 
 			authSuccess := authenticator.Authenticate(username, password)
