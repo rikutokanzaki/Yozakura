@@ -2,9 +2,9 @@ services:
   ####################################
   ### Dispatcher
   ####################################
-  gossh:
-    container_name: gossh
-    build: ../dispatcher/gossh
+  paramiko:
+    container_name: paramiko
+    build: ../dispatcher/paramiko
     depends_on:
       - heralding
       - cowrie
@@ -13,7 +13,7 @@ services:
     env_file:
       - ../.env
     volumes:
-      - ${YOZAKURA_DATA_PATH}/gossh:/var/log/gossh
+      - ${YOZAKURA_DATA_PATH}/paramiko:/var/log/paramiko
     restart: always
 
   ####################################

@@ -2,9 +2,41 @@ from utils import ansi_sequences, resource_manager
 import logging
 import paramiko
 import re
+import socket
 import time
 
 logger = logging.getLogger(__name__)
+
+def fetch_server_version(host: str, port: int = 2222, timeout: float = 5.0) -> str:
+  sock = None
+  try:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    sock.connect((host, port))
+
+    version_line = b""
+    while True:
+      chunk = sock.recv(256)
+      if not chunk:
+        break
+      version_line += chunk
+      if b"\r\n" in version_line:
+        break
+
+    version_str = version_line.split(b"\r\n")[0].decode("utf-8", errors="ignore")
+    logger.info("Fetched Cowrie version: %s", version_str)
+    return version_str
+
+  except Exception:
+    logger.warning("Failed to fetch Cowrie version, using default")
+    return "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3"
+
+  finally:
+    if sock:
+      try:
+        sock.close()
+      except Exception:
+        pass
 
 class SSHConnector:
   def __init__(self, host: str, port: int = 22):
