@@ -66,6 +66,8 @@ def _handle_client(client, addr):
   try:
     logger.info("Connection from %s", addr)
 
+    client.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 1)
+
     transport = paramiko.Transport(client)
 
     transport.add_server_key(HOST_KEY)
@@ -81,12 +83,11 @@ def _handle_client(client, addr):
     security_opts.kex = ("ecdh-sha2-nistp256", "ecdh-sha2-nistp384", "ecdh-sha2-nistp521", "diffie-hellman-group-exchange-sha256", "diffie-hellman-group14-sha256", "diffie-hellman-group16-sha512", "diffie-hellman-group14-sha1")
     security_opts.compression = ("none",)
 
-    client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
-
     server = SSHProxyServer(addr)
 
     try:
       transport.start_server(server=server)
+      client.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 0)
     except paramiko.SSHException:
       logger.warning("SSH negotiation failed")
       return
