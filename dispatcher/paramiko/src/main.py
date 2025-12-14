@@ -68,11 +68,11 @@ def _handle_client(client, addr):
 
     transport = paramiko.Transport(client)
 
+    transport.add_server_key(HOST_KEY)
+
     if COWRIE_VERSION:
       transport.local_version = COWRIE_VERSION
       logger.debug("Set server version to: %s", COWRIE_VERSION)
-
-    transport.add_server_key(HOST_KEY)
 
     security_opts = transport.get_security_options()
     security_opts.ciphers = ("aes128-ctr", "aes192-ctr", "aes256-ctr", "aes128-cbc", "aes192-cbc", "aes256-cbc")
@@ -80,6 +80,9 @@ def _handle_client(client, addr):
     security_opts.key_types = ("rsa-sha2-512", "rsa-sha2-256", "ssh-rsa")
     security_opts.kex = ("ecdh-sha2-nistp256", "ecdh-sha2-nistp384", "ecdh-sha2-nistp521", "diffie-hellman-group-exchange-sha256", "diffie-hellman-group14-sha256", "diffie-hellman-group16-sha512", "diffie-hellman-group14-sha1")
     security_opts.compression = ("none",)
+
+    client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
+
     server = SSHProxyServer(addr)
 
     try:
