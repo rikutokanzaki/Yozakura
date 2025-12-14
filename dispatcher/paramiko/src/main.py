@@ -72,14 +72,14 @@ def _handle_client(client, addr):
       transport.local_version = COWRIE_VERSION
       logger.debug("Set server version to: %s", COWRIE_VERSION)
 
+    transport.add_server_key(HOST_KEY)
+
     security_opts = transport.get_security_options()
     security_opts.ciphers = ("aes128-ctr", "aes192-ctr", "aes256-ctr", "aes128-cbc", "aes192-cbc", "aes256-cbc")
     security_opts.digests = ("hmac-sha2-256", "hmac-sha2-512", "hmac-sha1")
-    security_opts.key_types = ("ssh-rsa", "rsa-sha2-256", "rsa-sha2-512", "ssh-ed25519")
-    security_opts.kex = ("curve25519-sha256", "curve25519-sha256@libssh.org", "ecdh-sha2-nistp256", "ecdh-sha2-nistp384", "ecdh-sha2-nistp521", "diffie-hellman-group14-sha256", "diffie-hellman-group16-sha512", "diffie-hellman-group-exchange-sha256")
+    security_opts.key_types = ("rsa-sha2-512", "rsa-sha2-256", "ssh-rsa")
+    security_opts.kex = ("curve25519-sha256", "curve25519-sha256@libssh.org", "ecdh-sha2-nistp256", "ecdh-sha2-nistp384", "ecdh-sha2-nistp521", "diffie-hellman-group14-sha256", "diffie-hellman-group16-sha512")
     security_opts.compression = ("none",)
-
-    transport.add_server_key(HOST_KEY)
     server = SSHProxyServer(addr)
 
     try:
