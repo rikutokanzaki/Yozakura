@@ -1,4 +1,4 @@
-# !/bin/bash
+#!/bin/bash
 
 YOZAKURAINSTALLER=$(
   cat <<"EOF"
@@ -131,3 +131,8 @@ if [ "$status" = "200" ]; then
 else
   echo "Failed to import Kibana saved objects. HTTP status: $status"
 fi
+
+date +"%Y%m%d" > .install_date
+
+echo
+echo "Installation date recorded."

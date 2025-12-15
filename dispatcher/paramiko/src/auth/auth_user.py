@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 class Authenticator:
   def __init__(self, user_file="./config/user.txt"):
     self.rules = []
@@ -11,7 +15,7 @@ class Authenticator:
           user, passwd = line.split(":", 1)
           self.rules.append((user, passwd))
     except FileNotFoundError:
-      print(f"User file '{user_file}' not found.")
+      logger.warning("User file '%s' not found.", user_file)
       self.rules = []
 
   def authenticate(self, username: str, password: str) -> bool:
