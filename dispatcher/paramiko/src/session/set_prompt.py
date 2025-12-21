@@ -4,4 +4,4 @@ class PromptManager:
     self.cowrie_port = cowrie_port
 
   def get_prompt(self, username, hostname, cwd="~"):
-    return f"{username}@{hostname}:{cwd}$ "
+    return f"{username}@{hostname}:{cwd}# "

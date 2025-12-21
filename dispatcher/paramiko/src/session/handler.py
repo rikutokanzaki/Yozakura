@@ -29,6 +29,7 @@ def handle_session(chan, username, password, addr, start_time, cowrie_connector)
     pass
 
   motd_lines = set_motd.get_motd_lines(hostname)
+  chan.send(b"\r\n")
   for line in motd_lines:
     sent_line = line.rstrip() + "\r\n"
     chan.send(sent_line.encode("utf-8"))
@@ -63,6 +64,7 @@ def handle_session(chan, username, password, addr, start_time, cowrie_connector)
       dir_cmd = _build_dir_cmd(cwd)
       prompt = prompt_manager.get_prompt(username, hostname, cwd)
       reader.update_prompt(prompt)
+      reader.update_cwd(cwd)
 
       clean_output = ansi_sequences.strip_ansi_sequences(output)
       chan.send(clean_output.encode("utf-8"))

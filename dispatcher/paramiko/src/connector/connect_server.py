@@ -2,9 +2,41 @@ from utils import ansi_sequences, resource_manager
 import logging
 import paramiko
 import re
+import socket
 import time
 
 logger = logging.getLogger(__name__)
+
+def fetch_server_version(host: str, port: int = 2222, timeout: float = 5.0) -> str:
+  sock = None
+  try:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    sock.connect((host, port))
+
+    version_line = b""
+    while True:
+      chunk = sock.recv(256)
+      if not chunk:
+        break
+      version_line += chunk
+      if b"\r\n" in version_line:
+        break
+
+    version_str = version_line.split(b"\r\n")[0].decode("utf-8", errors="ignore")
+    logger.info("Fetched Cowrie version: %s", version_str)
+    return version_str
+
+  except Exception:
+    logger.warning("Failed to fetch Cowrie version, using default")
+    return "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3"
+
+  finally:
+    if sock:
+      try:
+        sock.close()
+      except Exception:
+        pass
 
 class SSHConnector:
   def __init__(self, host: str, port: int = 22):
@@ -140,6 +172,91 @@ class SSHConnector:
     except Exception:
       logger.exception("Error in execute_with_tab")
       return "", ""
+
+    finally:
+      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
+
+  def execute_command_via_shell(self, command: str, username: str, password: str):
+    client = None
+    shell = None
+    transport = None
+
+    try:
+      client = paramiko.SSHClient()
+      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+      transport = client.get_transport()
+
+      shell = client.invoke_shell()
+      shell.settimeout(5)
+
+      initial_output = b""
+      start_time = time.time()
+      while time.time() - start_time < 3:
+        if shell.recv_ready():
+          chunk = shell.recv(4096)
+          initial_output += chunk
+          if b"$ " in chunk or b"# " in chunk:
+            break
+        else:
+          time.sleep(0.05)
+
+      shell.send(command + "\n")
+      time.sleep(0.2)
+
+      output = b""
+      start_time = time.time()
+      timeout = 5
+
+      while time.time() - start_time < timeout:
+        if shell.recv_ready():
+          chunk = shell.recv(4096)
+          output += chunk
+          if b"$ " in chunk or b"# " in chunk:
+            break
+        else:
+          time.sleep(0.05)
+
+      output_str = output.decode('utf-8', errors='ignore')
+
+      output_str = ansi_sequences.strip_ansi_sequences(output_str)
+
+      lines = output_str.split('\n')
+      cleaned_lines = []
+
+      for line in lines:
+        stripped = line.strip()
+
+        if not stripped:
+          continue
+
+        if stripped == command or stripped.startswith(command + ' ') or stripped.endswith(command):
+          continue
+
+        if re.match(r'^[^@]+@[^:]+:[^$#]*[\$#]\s*$', stripped):
+          continue
+
+        prompt_match = re.search(r'^(.+?)\s+[^@]+@[^:]+:[^$#]*[\$#]\s*$', line)
+        if prompt_match:
+          output_content = prompt_match.group(1).strip()
+          if output_content:
+            cleaned_lines.append(output_content)
+          continue
+
+        cleaned_lines.append(line.rstrip())
+
+      if cleaned_lines:
+        result = '\n'.join(cleaned_lines)
+        if not result.endswith('\n'):
+          result += '\n'
+      else:
+        result = ''
+
+      return result
+
+    except Exception:
+      logger.exception("Error in execute_command_via_shell")
+      raise
 
     finally:
       resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
