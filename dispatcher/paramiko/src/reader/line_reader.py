@@ -1,6 +1,6 @@
-import logging
 from connector import connect_server
 from utils import ansi_sequences, extract_chars
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,9 @@ class LineReader:
 
   def update_prompt(self, new_prompt):
     self.prompt = new_prompt
+
+  def update_cwd(self, new_cwd):
+    self.cwd = new_cwd
 
   def send_prompt(self):
     self.chan.send(self.prompt.encode("utf-8"))
