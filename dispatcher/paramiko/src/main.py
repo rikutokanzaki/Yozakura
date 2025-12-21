@@ -2,6 +2,7 @@ from auth import auth_user
 from connector import connect_server
 from session import handler
 from utils import log_event, resource_manager
+from reader import line_reader
 import logging
 import socket
 import threading
@@ -19,6 +20,7 @@ HOST = "0.0.0.0"
 PORT = 22
 
 HOST_KEY = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
+COWRIE_VERSION = None
 
 class SSHProxyServer(paramiko.ServerInterface):
   def __init__(self, client_addr):
@@ -29,6 +31,9 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.heralding_connector = connect_server.SSHConnector(host="heralding")
     self.cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
     self.client_addr = client_addr
+    self.is_exec_request = False
+    self.request_type = None
+    self.exec_command = None
 
   def check_auth_password(self, username: str, password: str) -> int:
     self.username = username
@@ -53,10 +58,57 @@ class SSHProxyServer(paramiko.ServerInterface):
     return True
 
   def check_channel_shell_request(self, channel) -> bool:
+    self.request_type = "shell"
+    self.event.set()
     return True
 
   def check_channel_exec_request(self, channel, command) -> bool:
+    self.is_exec_request = True
+    self.request_type = "exec"
+    self.exec_command = command
+    self.event.set()
+    threading.Thread(
+      target=self._handle_exec_request,
+      args=(channel, command),
+      daemon=True
+    ).start()
     return True
+
+  def _handle_exec_request(self, channel, command):
+    try:
+      command_str = command.decode('utf-8', errors='ignore')
+
+      try:
+        src_ip, src_port = channel.getpeername()
+      except:
+        src_ip, src_port = "unknown", 0
+
+      log_event.log_command_event(src_ip, src_port, self.username, command_str, "~")
+
+      try:
+        output = self.cowrie_connector.execute_command_via_shell(
+          command_str,
+          self.username,
+          self.password
+        )
+        channel.send(output.encode('utf-8'))
+        channel.send_exit_status(0)
+      except Exception:
+        logger.exception("Failed to execute command on cowrie")
+        channel.send(b"Command execution failed.\n")
+        channel.send_exit_status(1)
+
+    except Exception:
+      logger.exception("Error in _handle_exec_request")
+      channel.send_exit_status(1)
+    finally:
+      try:
+        reader = line_reader.LineReader(channel, self.username, self.password)
+        reader.cleanup_terminal()
+      except Exception:
+        logger.exception("Failed to cleanup terminal (exec)")
+
+      resource_manager.close_channel(channel)
 
 def _handle_client(client, addr):
   transport = None
@@ -65,12 +117,28 @@ def _handle_client(client, addr):
   try:
     logger.info("Connection from %s", addr)
 
+    client.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 1)
+
     transport = paramiko.Transport(client)
+
     transport.add_server_key(HOST_KEY)
+
+    if COWRIE_VERSION:
+      transport.local_version = COWRIE_VERSION
+      logger.debug("Set server version to: %s", COWRIE_VERSION)
+
+    security_opts = transport.get_security_options()
+    security_opts.ciphers = ("aes128-ctr", "aes192-ctr", "aes256-ctr", "aes128-cbc", "aes192-cbc", "aes256-cbc")
+    security_opts.digests = ("hmac-sha2-256", "hmac-sha2-512", "hmac-sha1")
+    security_opts.key_types = ("rsa-sha2-512", "rsa-sha2-256", "ssh-rsa")
+    security_opts.kex = ("ecdh-sha2-nistp256", "ecdh-sha2-nistp384", "ecdh-sha2-nistp521", "diffie-hellman-group-exchange-sha256", "diffie-hellman-group14-sha256", "diffie-hellman-group16-sha512", "diffie-hellman-group14-sha1")
+    security_opts.compression = ("none",)
+
     server = SSHProxyServer(addr)
 
     try:
       transport.start_server(server=server)
+      client.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 0)
     except paramiko.SSHException:
       logger.warning("SSH negotiation failed")
       return
@@ -84,6 +152,15 @@ def _handle_client(client, addr):
     chan = transport.accept(20)
     if chan is None:
       logger.warning("No channel")
+      return
+
+    try:
+      server.event.wait(timeout=1.0)
+    except Exception:
+      pass
+
+    if server.is_exec_request:
+      session_started = True
       return
 
     username = server.username
@@ -113,6 +190,11 @@ def _handle_client(client, addr):
 
 
 def start_proxy():
+  global COWRIE_VERSION
+
+  COWRIE_VERSION = connect_server.fetch_server_version("cowrie", 2222)
+  logger.info("Using SSH version string: %s", COWRIE_VERSION)
+
   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
   sock.bind((HOST, PORT))
