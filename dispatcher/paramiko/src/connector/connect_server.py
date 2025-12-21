@@ -176,6 +176,91 @@ class SSHConnector:
     finally:
       resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
 
+  def execute_command_via_shell(self, command: str, username: str, password: str):
+    client = None
+    shell = None
+    transport = None
+
+    try:
+      client = paramiko.SSHClient()
+      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+      transport = client.get_transport()
+
+      shell = client.invoke_shell()
+      shell.settimeout(5)
+
+      initial_output = b""
+      start_time = time.time()
+      while time.time() - start_time < 3:
+        if shell.recv_ready():
+          chunk = shell.recv(4096)
+          initial_output += chunk
+          if b"$ " in chunk or b"# " in chunk:
+            break
+        else:
+          time.sleep(0.05)
+
+      shell.send(command + "\n")
+      time.sleep(0.2)
+
+      output = b""
+      start_time = time.time()
+      timeout = 5
+
+      while time.time() - start_time < timeout:
+        if shell.recv_ready():
+          chunk = shell.recv(4096)
+          output += chunk
+          if b"$ " in chunk or b"# " in chunk:
+            break
+        else:
+          time.sleep(0.05)
+
+      output_str = output.decode('utf-8', errors='ignore')
+
+      output_str = ansi_sequences.strip_ansi_sequences(output_str)
+
+      lines = output_str.split('\n')
+      cleaned_lines = []
+
+      for line in lines:
+        stripped = line.strip()
+
+        if not stripped:
+          continue
+
+        if stripped == command or stripped.startswith(command + ' ') or stripped.endswith(command):
+          continue
+
+        if re.match(r'^[^@]+@[^:]+:[^$#]*[\$#]\s*$', stripped):
+          continue
+
+        prompt_match = re.search(r'^(.+?)\s+[^@]+@[^:]+:[^$#]*[\$#]\s*$', line)
+        if prompt_match:
+          output_content = prompt_match.group(1).strip()
+          if output_content:
+            cleaned_lines.append(output_content)
+          continue
+
+        cleaned_lines.append(line.rstrip())
+
+      if cleaned_lines:
+        result = '\n'.join(cleaned_lines)
+        if not result.endswith('\n'):
+          result += '\n'
+      else:
+        result = ''
+
+      return result
+
+    except Exception:
+      logger.exception("Error in execute_command_via_shell")
+      raise
+
+    finally:
+      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
+
   def _wait_for_prompt(self, shell):
     try:
       while True:
