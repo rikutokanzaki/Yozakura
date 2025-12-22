@@ -117,10 +117,7 @@ def _handle_client(client, addr):
   try:
     logger.info("Connection from %s", addr)
 
-    client.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 1)
-
     transport = paramiko.Transport(client)
-
     transport.add_server_key(HOST_KEY)
 
     if COWRIE_VERSION:
@@ -138,7 +135,6 @@ def _handle_client(client, addr):
 
     try:
       transport.start_server(server=server)
-      client.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 0)
     except paramiko.SSHException:
       logger.warning("SSH negotiation failed")
       return
