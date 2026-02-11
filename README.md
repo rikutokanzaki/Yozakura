@@ -142,12 +142,55 @@ Yozakura/
 `.env`ファイルを編集：
 
 ```bash
+####################################
+### Server Configuration
+####################################
 YOZAKURA_DATA_PATH=../data
+
 ARCHIVE_DATA_PATH=/path/to/archive
-HOST_NAME=svr01
-ELASTIC_PASSWORD=YourPassword
-KIBANA_PASSWORD=YourPassword
+
+ALLOWED_NETWORKS=
+
+HOST_NAME=svr04
+
+####################################
+### Elastic Stack
+####################################
+
+# Project namespace (defaults to the current folder name if not set)
+#COMPOSE_PROJECT_NAME=myproject
+
+
+# Password for the 'elastic' user (at least 6 characters)
+ELASTIC_PASSWORD=
+
+
+# Password for the 'kibana_system' user (at least 6 characters)
+KIBANA_PASSWORD=
+
+
+# Version of Elastic products
 STACK_VERSION=8.7.1
+
+
+# Set the cluster name
+CLUSTER_NAME=docker-cluster
+
+
+# Set to 'basic' or 'trial' to automatically start the 30-day trial
+LICENSE=basic
+#LICENSE=trial
+
+
+# Increase or decrease based on the available host memory (in bytes)
+ES_MEM_LIMIT=1073741824
+KB_MEM_LIMIT=1073741824
+LS_MEM_LIMIT=1073741824
+
+
+# SAMPLE Predefined Key only to be used in POC environments
+ENCRYPTION_KEY=
+
 ```
 
 #### 2. **インストール実行**
